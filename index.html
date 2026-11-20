@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MT</title>
+<title>MTrain</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <meta name="theme-color" content="#182848">
@@ -11,70 +11,86 @@
 </head>
 <body>
 <main>
-  <h1>MT</h1>
-
-  <section class="grid">
-    <label for="wpm">Prędkość znaku (WPM)</label>
-    <input id="wpm" type="number" min="5" max="40" step="1">
-    <label for="effective_wpm">Prędkość odstępów (WPM, Farnsworth)</label>
-    <input id="effective_wpm" type="number" min="2" max="40" step="1">
-    <label for="tone_hz">Ton (Hz)</label>
-    <input id="tone_hz" type="number" min="300" max="1000" step="50">
-    <label for="pause_seconds">Pauza przed odpowiedzią (s)</label>
-    <input id="pause_seconds" type="number" min="0" max="20" step="0.5">
-    <label for="group_length">Długość zestawu znaków</label>
-    <input id="group_length" type="number" min="1" max="10" step="1">
-    <label for="noise_volume">Szum w tle, głośność % (0 = wył., budzi słuchawki BT)</label>
-    <input id="noise_volume" type="number" min="0" max="100" step="1">
-    <label for="extra_char_gap">Dodatkowa przerwa między literami/znakami w zestawie (ms)</label>
-    <input id="extra_char_gap_ms" type="number" min="0" max="20000" step="50">
+  <section class="practice card">
+    <h1>MTrain</h1>
+    <p id="status" role="status" aria-live="polite">Ustaw parametry i naciśnij Start.</p>
+    <input id="answer" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled aria-label="Odpowiedź">
+    <p id="score">Wynik: 0 / 0</p>
+    <div class="buttons">
+      <button id="start" class="primary">Start</button>
+      <button id="stop">Stop</button>
+      <button id="replay">Powtórz</button>
+      <button id="cheat-open">Ściąga</button>
+    </div>
   </section>
 
-  <fieldset>
-    <legend>Szum</legend>
-    <label><input id="noise_enabled" type="checkbox"> Szum włączony (odznacz, aby wyłączyć całkowicie)</label>
-  </fieldset>
-
-  <fieldset>
-    <legend>Gotowe zestawy znaków</legend>
-    <label><input type="radio" name="char_pool" value="custom"> Własny (wybór poniżej)</label>
-    <label><input type="radio" name="char_pool" value="letters_digits"> Litery + cyfry</label>
-    <label><input type="radio" name="char_pool" value="letters_digits_punctuation"> Litery + cyfry + znaki</label>
-  </fieldset>
-
-  <fieldset>
-    <legend>Pula znaków</legend>
-    <label><input id="use_letters" type="checkbox"> Litery a-z</label>
-    <label><input id="use_digits" type="checkbox"> Cyfry</label>
-    <label><input id="use_punctuation" type="checkbox"> Znaki interpunkcyjne</label>
-  </fieldset>
-
-  <fieldset>
-    <legend>Język lektora</legend>
-    <div class="row">
-      <label><input type="radio" name="language" value="pl"> Polski</label>
-      <label><input type="radio" name="language" value="en"> English</label>
+  <section class="settings card">
+    <div class="tabs" role="tablist" aria-label="Ustawienia">
+      <button type="button" class="tab" role="tab" data-tab="sound">Dźwięk</button>
+      <button type="button" class="tab" role="tab" data-tab="chars">Znaki</button>
+      <button type="button" class="tab" role="tab" data-tab="voice">Lektor i tryb</button>
+      <button type="button" class="tab" role="tab" data-tab="look">Wygląd</button>
     </div>
-    <label><input id="spelling" type="checkbox"> Literowanie liter (polskie imiona / alfabet NATO)</label>
-    <label><input id="spell_answer" type="checkbox"> Czytaj odpowiedź po wpisaniu (tryb wpisywania)</label>
-  </fieldset>
 
-  <fieldset>
-    <legend>Tryb</legend>
-    <label><input type="radio" name="mode" value="listen"> Słuchanie (głos po pauzie)</label>
-    <label><input type="radio" name="mode" value="type"> Wpisywanie (funkcjonalność eksperymentalna)</label>
-  </fieldset>
+    <div class="tab-panel" data-panel="sound" role="tabpanel">
+      <div class="grid">
+        <label for="wpm">Prędkość znaku (WPM)</label>
+        <input id="wpm" type="number" min="5" max="40" step="1">
+        <label for="effective_wpm">Prędkość odstępów (WPM, Farnsworth)</label>
+        <input id="effective_wpm" type="number" min="2" max="40" step="1">
+        <label for="tone_hz">Ton (Hz)</label>
+        <input id="tone_hz" type="number" min="300" max="1000" step="50">
+        <label for="extra_char_gap_ms">Dodatkowa przerwa między literami/znakami w zestawie (ms)</label>
+        <input id="extra_char_gap_ms" type="number" min="0" max="20000" step="50">
+        <label for="noise_volume">Szum w tle, głośność % (0 = wył., budzi słuchawki BT)</label>
+        <input id="noise_volume" type="number" min="0" max="100" step="1">
+      </div>
+      <label class="check"><input id="noise_enabled" type="checkbox"> Szum włączony (odznacz, aby wyłączyć całkowicie)</label>
+    </div>
 
-  <div class="buttons">
-    <button id="start" class="primary">Start</button>
-    <button id="stop">Stop</button>
-    <button id="replay">Powtórz</button>
-    <button id="cheat-open">Ściąga</button>
-  </div>
+    <div class="tab-panel" data-panel="chars" role="tabpanel">
+      <h2>Gotowe zestawy znaków</h2>
+      <div class="chips">
+        <label><input type="radio" name="char_pool" value="custom"> Własny</label>
+        <label><input type="radio" name="char_pool" value="letters_digits"> Litery + cyfry</label>
+        <label><input type="radio" name="char_pool" value="letters_digits_punctuation"> Litery + cyfry + znaki</label>
+      </div>
+      <h2>Pula znaków</h2>
+      <label class="check"><input id="use_letters" type="checkbox"> Litery a-z</label>
+      <label class="check"><input id="use_digits" type="checkbox"> Cyfry</label>
+      <label class="check"><input id="use_punctuation" type="checkbox"> Znaki interpunkcyjne</label>
+      <div class="grid">
+        <label for="group_length">Długość zestawu znaków</label>
+        <input id="group_length" type="number" min="1" max="10" step="1">
+        <label for="pause_seconds">Pauza przed odpowiedzią (s)</label>
+        <input id="pause_seconds" type="number" min="0" max="20" step="0.5">
+      </div>
+    </div>
 
-  <p id="status" role="status" aria-live="polite">Ustaw parametry i naciśnij Start.</p>
-  <input id="answer" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled aria-label="Odpowiedź">
-  <p id="score">Wynik: 0 / 0</p>
+    <div class="tab-panel" data-panel="voice" role="tabpanel">
+      <h2>Język lektora</h2>
+      <div class="chips">
+        <label><input type="radio" name="language" value="pl"> Polski</label>
+        <label><input type="radio" name="language" value="en"> English</label>
+      </div>
+      <label class="check"><input id="spelling" type="checkbox"> Literowanie liter (polskie imiona / alfabet NATO)</label>
+      <label class="check"><input id="spell_answer" type="checkbox"> Czytaj odpowiedź po wpisaniu (tryb wpisywania)</label>
+      <h2>Tryb</h2>
+      <div class="chips">
+        <label><input type="radio" name="mode" value="listen"> Słuchanie (głos po pauzie)</label>
+        <label><input type="radio" name="mode" value="type"> Wpisywanie (funkcjonalność eksperymentalna)</label>
+      </div>
+    </div>
+
+    <div class="tab-panel" data-panel="look" role="tabpanel">
+      <h2>Schemat kolorów</h2>
+      <div class="chips">
+        <label><input type="radio" name="theme" value="auto"> Auto (systemowy)</label>
+        <label><input type="radio" name="theme" value="light"> Jasny</label>
+        <label><input type="radio" name="theme" value="dark"> Ciemny</label>
+      </div>
+    </div>
+  </section>
 </main>
 
 <dialog id="cheat">

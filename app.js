@@ -12,11 +12,11 @@ const DEFAULTS = {
   wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 3,
   use_letters: true, use_digits: false, use_punctuation: false,
   language: "pl", spelling: false, spell_answer: false, mode: "listen",
-  char_pool: "custom", extra_char_gap_ms: 0, noise_enabled: true,
+  char_pool: "custom", extra_char_gap_ms: 0, noise_enabled: true, theme: "auto",
 };
 const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap_ms"];
 const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer", "noise_enabled"];
-const RADIO_KEYS = ["language", "mode", "char_pool"];
+const RADIO_KEYS = ["language", "mode", "char_pool", "theme"];
 const POOL_PRESETS = {
   letters_digits: { use_letters: true, use_digits: true, use_punctuation: false },
   letters_digits_punctuation: { use_letters: true, use_digits: true, use_punctuation: true },
@@ -423,7 +423,45 @@ function setupCheatSheet() {
 
 // ---------- init ----------
 
+/** "auto" removes the override so the system preference (prefers-color-scheme) applies. */
+function applyTheme(theme) {
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.dataset.theme = theme;
+  } else {
+    delete document.documentElement.dataset.theme;
+  }
+}
+
+const TAB_STORAGE_KEY = "mt-tab";
+
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach((tab) => {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", String(active));
+  });
+  document.querySelectorAll(".tab-panel").forEach((panel) => { panel.hidden = panel.dataset.panel !== name; });
+  try { localStorage.setItem(TAB_STORAGE_KEY, name); } catch { /* not essential */ }
+}
+
+function setupTabs() {
+  document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => showTab(tab.dataset.tab)));
+  let saved = null;
+  try { saved = localStorage.getItem(TAB_STORAGE_KEY); } catch { /* not essential */ }
+  const known = [...document.querySelectorAll(".tab")].some((tab) => tab.dataset.tab === saved);
+  showTab(known ? saved : "sound");
+}
+
 applyConfigToUi();
+setupTabs();
+applyTheme(config.theme);
+document.querySelectorAll("input[name=theme]").forEach((radio) => {
+  radio.addEventListener("change", () => {
+    config.theme = radio.value;
+    applyTheme(config.theme);
+    saveConfig();
+  });
+});
 document.querySelectorAll("input[name=char_pool]").forEach((radio) => {
   radio.addEventListener("change", () => {
     const preset = POOL_PRESETS[radio.value];
