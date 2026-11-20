@@ -1,6 +1,6 @@
 {
-  "name": "MTrain",
-  "short_name": "MTrain",
+  "name": "MTrain Basic",
+  "short_name": "MTrain Basic",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#182848",

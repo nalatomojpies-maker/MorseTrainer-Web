@@ -9,7 +9,7 @@ const NOISE_LOOP_SECONDS = 6;
 const BEEP_GAIN = 0.6;
 
 const DEFAULTS = {
-  wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 3,
+  wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 1,
   use_letters: true, use_digits: false, use_punctuation: false,
   language: "pl", spelling: false, spell_answer: false, mode: "listen",
   char_pool: "custom", extra_char_gap_ms: 0, noise_enabled: true, theme: "auto",
@@ -473,6 +473,12 @@ document.querySelectorAll("input[name=char_pool]").forEach((radio) => {
   $(key).addEventListener("change", () => {
     document.querySelector("input[name=char_pool][value=custom]").checked = true;
   });
+});
+/** Saves settings on every committed field change (registered after the preset handlers so they run first). */
+document.querySelector(".settings").addEventListener("change", () => {
+  if (!syncConfigFromUi()) return;
+  applyConfigToUi();
+  saveConfig();
 });
 $("start").addEventListener("click", start);
 $("stop").addEventListener("click", stop);
