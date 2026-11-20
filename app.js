@@ -13,9 +13,9 @@ const DEFAULTS = {
   wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 0.3,
   use_letters: true, use_digits: false, use_punctuation: false,
   language: "pl", spelling: false, spell_answer: false, mode: "listen",
-  char_pool: "custom", extra_char_gap_ms: 0, repeat_count: 1, theme: "auto",
+  char_pool: "custom", extra_char_gap_ms: 0, repeat_count: 1, answer_timeout_seconds: 0, theme: "auto",
 };
-const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap_ms", "repeat_count"];
+const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap_ms", "repeat_count", "answer_timeout_seconds"];
 const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer"];
 const RADIO_KEYS = ["language", "mode", "char_pool", "theme"];
 const POOL_PRESETS = {
@@ -33,6 +33,7 @@ let total = 0;
 let noiseSource = null;
 let wakeLock = null;
 let running = false;
+let answerTimer = null;
 const activeSources = new Set();
 const clipCache = new Map();
 
@@ -95,7 +96,8 @@ function syncConfigFromUi() {
   next.effective_wpm = Math.max(2, Math.min(next.effective_wpm, next.wpm));
   next.group_length = Math.max(1, Math.round(next.group_length));
   next.noise_volume = Math.max(0, Math.min(100, Math.round(next.noise_volume * 10) / 10));
-  next.repeat_count = Math.max(1, Math.min(10, Math.round(next.repeat_count)));
+  next.answer_timeout_seconds = Math.max(0, Math.min(60, Math.round(next.answer_timeout_seconds * 10) / 10));
+  next.repeat_count =Math.max(1, Math.min(10, Math.round(next.repeat_count)));
   next.extra_char_gap_ms = Math.max(0, Math.min(20000, Math.round(next.extra_char_gap_ms)));
   config = next;
   return true;
@@ -305,6 +307,7 @@ async function keepScreenAwake() {
 function stop() {
   runId++;
   running = false;
+  clearAnswerTimer();
   stopAllSounds();
   stopNoise();
   $("answer").disabled = true;
@@ -422,21 +425,40 @@ async function typeRound(token) {
   answer.value = "";
   answer.focus();
   setStatus("Wpisz znak(i) i naciśnij Enter.");
+  if (config.answer_timeout_seconds > 0) {
+    answerTimer = setTimeout(() => {
+      if (token === runId) finishRound("", true);
+    }, config.answer_timeout_seconds * 1000);
+  }
 }
 
-async function checkAnswer() {
+function clearAnswerTimer() {
+  if (answerTimer !== null) {
+    clearTimeout(answerTimer);
+    answerTimer = null;
+  }
+}
+
+function checkAnswer() {
   const answerField = $("answer");
   if (answerField.disabled) return;
+  finishRound(answerField.value.trim().toLowerCase(), false);
+}
+
+/** Scores the current group (a timeout counts as a wrong answer) and moves on to the next one. */
+async function finishRound(typed, timedOut) {
+  clearAnswerTimer();
   const answered = currentGroup;
   total++;
-  if (answerField.value.trim().toLowerCase() === answered) {
+  if (!timedOut && typed === answered) {
     correct++;
     setStatus("Dobrze!", "ok");
   } else {
-    setStatus(`Błąd. Poprawnie: ${answered.toUpperCase()}`, "bad");
+    const prefix = timedOut ? "Czas minął." : "Błąd.";
+    setStatus(`${prefix} Poprawnie: ${answered.toUpperCase()}`, "bad");
   }
   updateScore();
-  answerField.disabled = true;
+  $("answer").disabled = true;
   currentGroup = drawGroup();
   const token = runId;
   if (config.spell_answer && !(await playVoiceGroup(answered, token))) return;

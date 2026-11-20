@@ -1,6 +1,6 @@
 "use strict";
 // Offline cache: all files are static, so serve from cache first. Bump CACHE_NAME after changing any file.
-const CACHE_NAME = "mt-v14";
+const CACHE_NAME = "mt-v15";
 const FILES = ["./", "index.html", "style.css", "app.js", "data.js", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (event) => {

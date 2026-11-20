@@ -86,6 +86,10 @@
         <label><input type="radio" name="mode" value="listen"> Słuchanie (głos po pauzie)</label>
         <label><input type="radio" name="mode" value="type"> Wpisywanie (funkcjonalność eksperymentalna)</label>
       </div>
+      <div class="grid">
+        <label for="answer_timeout_seconds">Limit czasu na wpisanie (s, 0 = bez limitu; po czasie liczy się jako błąd i następny znak)</label>
+        <input id="answer_timeout_seconds" type="number" min="0" max="60" step="0.5">
+      </div>
     </div>
 
     <div class="tab-panel" data-panel="look" role="tabpanel">
