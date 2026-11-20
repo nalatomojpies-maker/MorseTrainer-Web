@@ -26,7 +26,21 @@
     <input id="group_length" type="number" min="1" max="10" step="1">
     <label for="noise_volume">Szum w tle, głośność % (0 = wył., budzi słuchawki BT)</label>
     <input id="noise_volume" type="number" min="0" max="100" step="1">
+    <label for="extra_char_gap">Dodatkowa przerwa między literami/znakami w zestawie (s)</label>
+    <input id="extra_char_gap" type="number" min="0" max="20" step="0.5">
   </section>
+
+  <fieldset>
+    <legend>Szum</legend>
+    <label><input id="noise_enabled" type="checkbox"> Szum włączony (odznacz, aby wyłączyć całkowicie)</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Gotowe zestawy znaków</legend>
+    <label><input type="radio" name="char_pool" value="custom"> Własny (wybór poniżej)</label>
+    <label><input type="radio" name="char_pool" value="letters_digits"> Litery + cyfry</label>
+    <label><input type="radio" name="char_pool" value="letters_digits_punctuation"> Litery + cyfry + znaki</label>
+  </fieldset>
 
   <fieldset>
     <legend>Pula znaków</legend>

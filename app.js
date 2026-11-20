@@ -12,10 +12,15 @@ const DEFAULTS = {
   wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 3,
   use_letters: true, use_digits: false, use_punctuation: false,
   language: "pl", spelling: false, spell_answer: false, mode: "listen",
+  char_pool: "custom", extra_char_gap: 0, noise_enabled: true,
 };
-const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume"];
-const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer"];
-const RADIO_KEYS = ["language", "mode"];
+const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap"];
+const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer", "noise_enabled"];
+const RADIO_KEYS = ["language", "mode", "char_pool"];
+const POOL_PRESETS = {
+  letters_digits: { use_letters: true, use_digits: true, use_punctuation: false },
+  letters_digits_punctuation: { use_letters: true, use_digits: true, use_punctuation: true },
+};
 
 const $ = (id) => document.getElementById(id);
 let config = loadConfig();
@@ -73,6 +78,7 @@ function syncConfigFromUi() {
   next.effective_wpm = Math.max(2, Math.min(next.effective_wpm, next.wpm));
   next.group_length = Math.max(1, Math.round(next.group_length));
   next.noise_volume = Math.max(0, Math.min(100, next.noise_volume));
+  next.extra_char_gap = Math.max(0, Math.min(20, next.extra_char_gap));
   config = next;
   return true;
 }
@@ -155,8 +161,11 @@ function scheduleBeep(start, duration) {
 async function playMorseGroup(group, token) {
   const unit = 1.2 / config.wpm;
   const characterGap = (3 * 1.2) / config.effective_wpm;
-  for (const character of group) {
+  const characters = [...group];
+  for (const [position, character] of characters.entries()) {
     if (token !== runId) return false;
+    const isLast = position === characters.length - 1;
+    const extraGap = isLast ? 0 : config.extra_char_gap;
     let time = audioContext.currentTime + 0.05;
     const begin = time;
     [...DATA.morse[character]].forEach((symbol, index) => {
@@ -165,7 +174,7 @@ async function playMorseGroup(group, token) {
       scheduleBeep(time, length);
       time += length;
     });
-    if (!(await sleep((time - begin + 0.05) * 1000 + characterGap * 1000, token))) return false;
+    if (!(await sleep((time - begin + 0.05) * 1000 + (characterGap + extraGap) * 1000, token))) return false;
   }
   return true;
 }
@@ -231,7 +240,7 @@ function generateRadioStatic(length, sampleRate) {
 
 function startNoise() {
   stopNoise();
-  if (config.noise_volume <= 0) return;
+  if (!config.noise_enabled || config.noise_volume <= 0) return;
   const sampleRate = audioContext.sampleRate;
   const buffer = audioContext.createBuffer(1, sampleRate * NOISE_LOOP_SECONDS, sampleRate);
   buffer.copyToChannel(generateRadioStatic(buffer.length, sampleRate), 0);
@@ -287,8 +296,10 @@ async function start() {
   total = 0;
   updateScore();
   const token = runId;
-  setStatus("Szum... zaraz start.");
-  if (!(await sleep(NOISE_LEAD_IN_MS, token))) return;
+  if (config.noise_enabled && config.noise_volume > 0) {
+    setStatus("Szum... zaraz start.");
+    if (!(await sleep(NOISE_LEAD_IN_MS, token))) return;
+  }
   if (config.mode === "listen") {
     listenLoop(token);
   } else {
@@ -413,6 +424,18 @@ function setupCheatSheet() {
 // ---------- init ----------
 
 applyConfigToUi();
+document.querySelectorAll("input[name=char_pool]").forEach((radio) => {
+  radio.addEventListener("change", () => {
+    const preset = POOL_PRESETS[radio.value];
+    if (!preset) return;
+    Object.entries(preset).forEach(([key, value]) => { $(key).checked = value; });
+  });
+});
+["use_letters", "use_digits", "use_punctuation"].forEach((key) => {
+  $(key).addEventListener("change", () => {
+    document.querySelector("input[name=char_pool][value=custom]").checked = true;
+  });
+});
 $("start").addEventListener("click", start);
 $("stop").addEventListener("click", stop);
 $("replay").addEventListener("click", replay);
