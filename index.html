@@ -26,8 +26,8 @@
     <input id="group_length" type="number" min="1" max="10" step="1">
     <label for="noise_volume">Szum w tle, głośność % (0 = wył., budzi słuchawki BT)</label>
     <input id="noise_volume" type="number" min="0" max="100" step="1">
-    <label for="extra_char_gap">Dodatkowa przerwa między literami/znakami w zestawie (s)</label>
-    <input id="extra_char_gap" type="number" min="0" max="20" step="0.5">
+    <label for="extra_char_gap">Dodatkowa przerwa między literami/znakami w zestawie (ms)</label>
+    <input id="extra_char_gap_ms" type="number" min="0" max="20000" step="50">
   </section>
 
   <fieldset>
@@ -62,7 +62,7 @@
   <fieldset>
     <legend>Tryb</legend>
     <label><input type="radio" name="mode" value="listen"> Słuchanie (głos po pauzie)</label>
-    <label><input type="radio" name="mode" value="type"> Wpisywanie</label>
+    <label><input type="radio" name="mode" value="type"> Wpisywanie (funkcjonalność eksperymentalna)</label>
   </fieldset>
 
   <div class="buttons">

@@ -12,9 +12,9 @@ const DEFAULTS = {
   wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 3,
   use_letters: true, use_digits: false, use_punctuation: false,
   language: "pl", spelling: false, spell_answer: false, mode: "listen",
-  char_pool: "custom", extra_char_gap: 0, noise_enabled: true,
+  char_pool: "custom", extra_char_gap_ms: 0, noise_enabled: true,
 };
-const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap"];
+const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap_ms"];
 const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer", "noise_enabled"];
 const RADIO_KEYS = ["language", "mode", "char_pool"];
 const POOL_PRESETS = {
@@ -78,7 +78,7 @@ function syncConfigFromUi() {
   next.effective_wpm = Math.max(2, Math.min(next.effective_wpm, next.wpm));
   next.group_length = Math.max(1, Math.round(next.group_length));
   next.noise_volume = Math.max(0, Math.min(100, next.noise_volume));
-  next.extra_char_gap = Math.max(0, Math.min(20, next.extra_char_gap));
+  next.extra_char_gap_ms = Math.max(0, Math.min(20000, Math.round(next.extra_char_gap_ms)));
   config = next;
   return true;
 }
@@ -165,7 +165,7 @@ async function playMorseGroup(group, token) {
   for (const [position, character] of characters.entries()) {
     if (token !== runId) return false;
     const isLast = position === characters.length - 1;
-    const extraGap = isLast ? 0 : config.extra_char_gap;
+    const extraGap = isLast ? 0 : config.extra_char_gap_ms / 1000;
     let time = audioContext.currentTime + 0.05;
     const begin = time;
     [...DATA.morse[character]].forEach((symbol, index) => {
