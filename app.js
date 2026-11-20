@@ -3,19 +3,20 @@
 
 const DATA = window.MT_DATA;
 const STORAGE_KEY = "mt-config";
+const STATS_KEY = "mt-stats";
 const NOISE_LEAD_IN_MS = 1000;
 const VOICE_GAP_S = 0;
 const NOISE_LOOP_SECONDS = 6;
 const BEEP_GAIN = 0.6;
 
 const DEFAULTS = {
-  wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 1,
+  wpm: 15, effective_wpm: 10, tone_hz: 600, pause_seconds: 3, group_length: 1, noise_volume: 0.3,
   use_letters: true, use_digits: false, use_punctuation: false,
   language: "pl", spelling: false, spell_answer: false, mode: "listen",
-  char_pool: "custom", extra_char_gap_ms: 0, noise_enabled: true, theme: "auto",
+  char_pool: "custom", extra_char_gap_ms: 0, repeat_count: 1, theme: "auto",
 };
-const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap_ms"];
-const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer", "noise_enabled"];
+const NUMBER_KEYS = ["wpm", "effective_wpm", "tone_hz", "pause_seconds", "group_length", "noise_volume", "extra_char_gap_ms", "repeat_count"];
+const CHECKBOX_KEYS = ["use_letters", "use_digits", "use_punctuation", "spelling", "spell_answer"];
 const RADIO_KEYS = ["language", "mode", "char_pool", "theme"];
 const POOL_PRESETS = {
   letters_digits: { use_letters: true, use_digits: true, use_punctuation: false },
@@ -31,6 +32,7 @@ let correct = 0;
 let total = 0;
 let noiseSource = null;
 let wakeLock = null;
+let running = false;
 const activeSources = new Set();
 const clipCache = new Map();
 
@@ -59,6 +61,21 @@ function applyConfigToUi() {
     const radio = document.querySelector(`input[name=${key}][value=${config[key]}]`);
     if (radio) radio.checked = true;
   });
+  applyModeUi();
+}
+
+/** Listening mode has no answer field and no score; typing mode shows both. */
+function applyModeUi() {
+  document.body.dataset.mode = config.mode;
+  $("answer").hidden = config.mode === "listen";
+  updateButtons();
+}
+
+/** Start is available when idle, Stop while running, Replay only while running in typing mode. */
+function updateButtons() {
+  $("start").disabled = running;
+  $("stop").disabled = !running;
+  $("replay").disabled = !(running && config.mode === "type");
 }
 
 /** Copies the form into `config`; returns false when a number is invalid. */
@@ -77,7 +94,8 @@ function syncConfigFromUi() {
   next.wpm = Math.max(5, next.wpm);
   next.effective_wpm = Math.max(2, Math.min(next.effective_wpm, next.wpm));
   next.group_length = Math.max(1, Math.round(next.group_length));
-  next.noise_volume = Math.max(0, Math.min(100, next.noise_volume));
+  next.noise_volume = Math.max(0, Math.min(100, Math.round(next.noise_volume * 10) / 10));
+  next.repeat_count = Math.max(1, Math.min(10, Math.round(next.repeat_count)));
   next.extra_char_gap_ms = Math.max(0, Math.min(20000, Math.round(next.extra_char_gap_ms)));
   config = next;
   return true;
@@ -156,6 +174,16 @@ function scheduleBeep(start, duration) {
   oscillator.start(start);
   oscillator.stop(start + duration + 0.01);
   track(oscillator);
+}
+
+/** Plays the group `repeat_count` times, separated by a word-length gap (7 units; 3 already follow each group). */
+async function playMorseRepeated(group, token) {
+  const extraGapMs = ((4 * 1.2) / config.effective_wpm) * 1000;
+  for (let repeat = 0; repeat < config.repeat_count; repeat++) {
+    if (repeat > 0 && !(await sleep(extraGapMs, token))) return false;
+    if (!(await playMorseGroup(group, token))) return false;
+  }
+  return true;
 }
 
 async function playMorseGroup(group, token) {
@@ -240,7 +268,7 @@ function generateRadioStatic(length, sampleRate) {
 
 function startNoise() {
   stopNoise();
-  if (!config.noise_enabled || config.noise_volume <= 0) return;
+  if (config.noise_volume <= 0) return;
   const sampleRate = audioContext.sampleRate;
   const buffer = audioContext.createBuffer(1, sampleRate * NOISE_LOOP_SECONDS, sampleRate);
   buffer.copyToChannel(generateRadioStatic(buffer.length, sampleRate), 0);
@@ -273,13 +301,77 @@ async function keepScreenAwake() {
 
 // ---------- control ----------
 
+/** Ends the running session without any summary (also used before starting a new one). */
 function stop() {
   runId++;
+  running = false;
   stopAllSounds();
   stopNoise();
   $("answer").disabled = true;
   if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  updateButtons();
   setStatus("Zatrzymano.");
+}
+
+/** Stop button: ends the session and, in typing mode, shows the results. */
+function stopAndSummarize() {
+  const wasTyping = running && config.mode === "type";
+  stop();
+  if (wasTyping && total > 0) showSummary();
+}
+
+// ---------- results ----------
+
+function isScore(value) {
+  return Boolean(value) && Number.isFinite(value.correct) && Number.isFinite(value.total);
+}
+
+function loadStats() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STATS_KEY) || "null");
+    if (parsed && isScore(parsed.all)) {
+      return { all: parsed.all, last: isScore(parsed.last) && parsed.last.total > 0 ? parsed.last : null };
+    }
+  } catch {
+    // corrupted or unavailable: start from empty statistics
+  }
+  return { all: { correct: 0, total: 0 }, last: null };
+}
+
+function saveStats(stats) {
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  } catch {
+    // storage unavailable: statistics just won't persist
+  }
+}
+
+function percentOf(score) {
+  return score.total > 0 ? (score.correct / score.total) * 100 : 0;
+}
+
+function formatScore(score) {
+  return `${score.correct} / ${score.total} (${percentOf(score).toFixed(0)}%)`;
+}
+
+function describeComparison(current, previous) {
+  if (!previous) return "To pierwsza zapisana sesja, więc nie ma jeszcze z czym porównać.";
+  const difference = Math.round(percentOf(current) - percentOf(previous));
+  if (difference > 0) return `Lepiej niż poprzednio: +${difference} p.p.`;
+  if (difference < 0) return `Gorzej niż poprzednio: ${difference} p.p.`;
+  return "Tak samo jak poprzednio.";
+}
+
+function showSummary() {
+  const stats = loadStats();
+  const current = { correct, total };
+  const all = { correct: stats.all.correct + current.correct, total: stats.all.total + current.total };
+  $("sum-current").textContent = formatScore(current);
+  $("sum-all").textContent = formatScore(all);
+  $("sum-previous").textContent = stats.last ? formatScore(stats.last) : "brak";
+  $("sum-compare").textContent = describeComparison(current, stats.last);
+  saveStats({ all, last: current });
+  $("summary").showModal();
 }
 
 function updateScore() {
@@ -289,6 +381,8 @@ function updateScore() {
 async function start() {
   if (!readSettings()) return;
   stop();
+  running = true;
+  updateButtons();
   ensureAudio();
   keepScreenAwake();
   startNoise();
@@ -296,7 +390,7 @@ async function start() {
   total = 0;
   updateScore();
   const token = runId;
-  if (config.noise_enabled && config.noise_volume > 0) {
+  if (config.noise_volume > 0) {
     setStatus("Szum... zaraz start.");
     if (!(await sleep(NOISE_LEAD_IN_MS, token))) return;
   }
@@ -311,10 +405,10 @@ async function start() {
 async function listenLoop(token) {
   while (token === runId) {
     const group = drawGroup();
-    setStatus("Słuchaj i mów na głos...");
-    if (!(await playMorseGroup(group, token))) return;
+    setStatus("Słuchaj i mów na głos...", "listen");
+    if (!(await playMorseRepeated(group, token))) return;
     if (!(await sleep(config.pause_seconds * 1000, token))) return;
-    setStatus(`Odpowiedź: ${group.toUpperCase()}`);
+    setStatus(`Odpowiedź: ${group.toUpperCase()}`, "answer");
     if (!(await playVoiceGroup(group, token))) return;
     if (!(await sleep(1000, token))) return;
   }
@@ -322,7 +416,7 @@ async function listenLoop(token) {
 
 async function typeRound(token) {
   setStatus("Słuchaj...");
-  if (!(await playMorseGroup(currentGroup, token))) return;
+  if (!(await playMorseRepeated(currentGroup, token))) return;
   const answer = $("answer");
   answer.disabled = false;
   answer.value = "";
@@ -476,12 +570,14 @@ document.querySelectorAll("input[name=char_pool]").forEach((radio) => {
 });
 /** Saves settings on every committed field change (registered after the preset handlers so they run first). */
 document.querySelector(".settings").addEventListener("change", () => {
+  const previousMode = config.mode;
   if (!syncConfigFromUi()) return;
+  if (running && config.mode !== previousMode) stop(); // a session cannot switch mode midway
   applyConfigToUi();
   saveConfig();
 });
 $("start").addEventListener("click", start);
-$("stop").addEventListener("click", stop);
+$("stop").addEventListener("click", stopAndSummarize);
 $("replay").addEventListener("click", replay);
 $("answer").addEventListener("keydown", (event) => { if (event.key === "Enter") checkAnswer(); });
 setupCheatSheet();

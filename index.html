@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MTrain Basic</title>
+<title>MEarTrainer</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <meta name="theme-color" content="#182848">
@@ -12,15 +12,20 @@
 <body>
 <main>
   <section class="practice card">
-    <h1>MTrain Basic</h1>
-    <p id="status" role="status" aria-live="polite">Ustaw parametry i naciśnij Start.</p>
-    <input id="answer" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled aria-label="Odpowiedź">
-    <p id="score">Wynik: 0 / 0</p>
+    <header class="hero">
+      <h1>MEarTrainer</h1>
+      <p>Trener odbioru alfabetu Morse'a</p>
+    </header>
+    <div class="screen">
+      <p id="status" role="status" aria-live="polite">Ustaw parametry i naciśnij Start.</p>
+      <input id="answer" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" disabled hidden aria-label="Odpowiedź">
+      <p id="score">Wynik: 0 / 0</p>
+    </div>
     <div class="buttons">
-      <button id="start" class="primary">Start</button>
-      <button id="stop">Stop</button>
-      <button id="replay">Powtórz</button>
-      <button id="cheat-open">Ściąga</button>
+      <button id="start" class="primary">▶ Start</button>
+      <button id="stop" disabled>■ Stop</button>
+      <button id="replay" disabled>↻ Powtórz</button>
+      <button id="cheat-open">☰ Ściąga</button>
     </div>
   </section>
 
@@ -42,10 +47,11 @@
         <input id="tone_hz" type="number" min="300" max="1000" step="50">
         <label for="extra_char_gap_ms">Dodatkowa przerwa między literami/znakami w zestawie (ms)</label>
         <input id="extra_char_gap_ms" type="number" min="0" max="20000" step="50">
-        <label for="noise_volume">Szum w tle, głośność % (0 = wył., budzi słuchawki BT)</label>
-        <input id="noise_volume" type="number" min="0" max="100" step="1">
+        <label for="repeat_count">Powtórzeń dźwięku przed odpowiedzią</label>
+        <input id="repeat_count" type="number" min="1" max="10" step="1">
+        <label for="noise_volume">Szum w tle, głośność % (0–100, krok 0,1; 0 = wył., budzi słuchawki BT)</label>
+        <input id="noise_volume" type="number" min="0" max="100" step="0.1">
       </div>
-      <label class="check"><input id="noise_enabled" type="checkbox"> Szum włączony (odznacz, aby wyłączyć całkowicie)</label>
     </div>
 
     <div class="tab-panel" data-panel="chars" role="tabpanel">
@@ -94,6 +100,19 @@
 
   <footer class="credits">MTrain Basic by SP5EOE. Stworzony przy pomocy Claude AI. Kod programu: The Unlicense - używaj, kopiuj i modyfikuj bez ograniczeń.<br>Nagrania lektora zostały wygenerowane syntezą mowy Microsoft Edge (przez edge-tts) i nie są objęte tą licencją; prawa do nich mogą należeć do ich dostawcy.<br>Nie używamy cookies. Ustawienia zapisują się tylko lokalnie w Twojej przeglądarce (localStorage) i nigdzie nie są wysyłane.</footer>
 </main>
+
+<dialog id="summary">
+  <form method="dialog">
+    <h2 class="dialog-title">Wyniki sesji</h2>
+    <div class="stats">
+      <div class="stat"><span>Ta próba</span><strong id="sum-current"></strong></div>
+      <div class="stat"><span>Wszystkie próby</span><strong id="sum-all"></strong></div>
+      <div class="stat"><span>Poprzednia próba</span><strong id="sum-previous"></strong></div>
+    </div>
+    <p id="sum-compare"></p>
+    <button value="close" class="primary">OK</button>
+  </form>
+</dialog>
 
 <dialog id="cheat">
   <form method="dialog" class="cheat-top">
