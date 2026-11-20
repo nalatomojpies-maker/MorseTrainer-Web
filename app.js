@@ -424,7 +424,7 @@ async function typeRound(token) {
   answer.disabled = false;
   answer.value = "";
   answer.focus();
-  setStatus("Wpisz znak(i) i naciśnij Enter.");
+  setStatus("Wpisz znak(i).");
   if (config.answer_timeout_seconds > 0) {
     answerTimer = setTimeout(() => {
       if (token === runId) finishRound("", true);
@@ -602,6 +602,10 @@ $("start").addEventListener("click", start);
 $("stop").addEventListener("click", stopAndSummarize);
 $("replay").addEventListener("click", replay);
 $("answer").addEventListener("keydown", (event) => { if (event.key === "Enter") checkAnswer(); });
+// auto-submit as soon as the whole group has been typed (Enter still works as well)
+$("answer").addEventListener("input", () => {
+  if ([...$("answer").value.trim()].length >= config.group_length) checkAnswer();
+});
 setupCheatSheet();
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
